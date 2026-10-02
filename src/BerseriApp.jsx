@@ -12,8 +12,8 @@ import { WargaPickup } from "./features/warga/WargaPickup";
 import { WargaBank } from "./features/warga/WargaBank";
 import { WargaEdukasi } from "./features/warga/WargaEdukasi";
 import { WargaPeta } from "./features/warga/WargaPeta";
-import { PetugasTugas } from "./features/petugas/PetugasTugas";
-import { PetugasRiwayat } from "./features/petugas/PetugasRiwayat";
+// import { PetugasTugas } from "./features/petugas/PetugasTugas";
+// import { PetugasRiwayat } from "./features/petugas/PetugasRiwayat";
 import { BankScan } from "./features/bank/BankScan";
 import { BankRekap } from "./features/bank/BankRekap";
 import { BankPengelolaan } from "./features/bank/BankPengelolaan";
@@ -39,8 +39,8 @@ const CONTENT_MAP = {
   "warga-banksampah": WargaBank,
   "warga-edukasi": WargaEdukasi,
   "warga-peta": WargaPeta,
-  "petugas-tugas": PetugasTugas,
-  "petugas-riwayat": PetugasRiwayat,
+  // "petugas-tugas": PetugasTugas,
+  // "petugas-riwayat": PetugasRiwayat,
   "bank-scan": BankScan,
   "bank-rekap": BankRekap,
   "bank-pengelolaan": BankPengelolaan,
