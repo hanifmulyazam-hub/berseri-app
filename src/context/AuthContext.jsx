@@ -36,20 +36,20 @@ export function AuthProvider({ children }) {
     }
     if (error) console.error("[AuthContext] profiles select failed:", error);
 
-    // First sign-in for a self-registered Pelaku Usaha:
+    // First sign-in for a self-registered Warga or Pelaku Usaha:
     // create their profile row from Clerk metadata.
     const meta = user?.unsafeMetadata;
-    if (meta?.role === "pelaku_usaha") {
+    if (meta?.role === "pelaku_usaha" || meta?.role === "warga") {
       const { data: created, error: insertError } = await supabase
         .from("profiles")
         .insert({
           id: userId,
-          role: "pelaku_usaha",
+          role: meta.role,
           full_name:
             meta.full_name ||
             user?.fullName ||
             user?.primaryEmailAddress?.emailAddress ||
-            "Pelaku Usaha",
+            (meta.role === "pelaku_usaha" ? "Pelaku Usaha" : "Warga"),
           phone: meta.phone || null,
           address: meta.address || null,
         })
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
         // Email/password registration already collects business information.
         // Google OAuth does not, so its business profile will be completed
         // through the onboarding screen after authentication.
-        if (meta.nama_usaha && meta.jenis_usaha) {
+        if (meta.role === "pelaku_usaha" && meta.nama_usaha && meta.jenis_usaha) {
           const { error: businessError } = await supabase
             .from("pelaku_usaha")
             .insert({

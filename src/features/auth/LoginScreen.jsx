@@ -12,6 +12,7 @@ export function LoginScreen() {
   const { signUp: legacySignUp } = useLegacySignUp();
 
   const [mode, setMode] = useState("login"); // login | daftar | verify | lupa | lupa-reset
+  const [daftarType, setDaftarType] = useState("warga"); // warga | pelaku_usaha
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -39,6 +40,30 @@ export function LoginScreen() {
     } else {
       setError("Login belum selesai, coba lagi.");
     }
+    setSubmitting(false);
+  };
+
+  const submitWargaRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    const { error: err } = await signUp.password({
+      emailAddress: email,
+      password,
+      unsafeMetadata: { role: "warga", full_name: fullName, phone, address },
+    });
+    if (err) {
+      setError(friendlyError(err));
+      setSubmitting(false);
+      return;
+    }
+    const { error: codeErr } = await signUp.verifications.sendEmailCode();
+    if (codeErr) {
+      setError(friendlyError(codeErr));
+      setSubmitting(false);
+      return;
+    }
+    setMode("verify");
     setSubmitting(false);
   };
 
@@ -146,7 +171,7 @@ export function LoginScreen() {
         redirectUrl: `${window.location.origin}/sso-callback`,
         redirectUrlComplete: window.location.origin,
         unsafeMetadata: {
-          role: "pelaku_usaha",
+          role: "warga",
         },
       });
     } catch (err) {
@@ -203,7 +228,10 @@ export function LoginScreen() {
           <p className="text-xs ink-soft mb-5">
             {mode === "login" &&
               "Masuk dengan email & password akun Anda. Peran Anda (warga, petugas, pengelola bank sampah, atau admin) terdeteksi otomatis."}
-            {mode === "daftar" && "Pendaftaran akun baru untuk Warga / Pelaku Usaha."}
+            {mode === "daftar" &&
+              (daftarType === "warga"
+                ? "Pendaftaran akun baru untuk Warga."
+                : "Pendaftaran akun baru untuk Pelaku Usaha / Instansi.")}
             {mode === "verify" && `Kami mengirim kode 6 digit ke ${email}. Masukkan kodenya di bawah ini.`}
             {mode === "lupa" && "Masukkan email akun Anda, kami kirimkan kode untuk atur ulang password."}
             {mode === "lupa-reset" && `Masukkan kode yang dikirim ke ${email}, lalu buat password baru.`}
@@ -369,6 +397,110 @@ export function LoginScreen() {
           )}
 
           {mode === "daftar" && (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setDaftarType("warga")}
+                className={`tap px-3 py-2.5 rounded-xl text-sm font-semibold border ${
+                  daftarType === "warga" ? "btn-primary text-white border-transparent" : "border-line ink-soft"
+                }`}
+              >
+                Warga
+              </button>
+              <button
+                type="button"
+                onClick={() => setDaftarType("pelaku_usaha")}
+                className={`tap px-3 py-2.5 rounded-xl text-sm font-semibold border ${
+                  daftarType === "pelaku_usaha" ? "btn-primary text-white border-transparent" : "border-line ink-soft"
+                }`}
+              >
+                Pelaku Usaha
+              </button>
+            </div>
+          )}
+
+          {mode === "daftar" && daftarType === "warga" && (
+            <form onSubmit={submitWargaRegister} className="space-y-4">
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">Nama Lengkap</label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <User size={16} className="ink-soft shrink-0" />
+                  <input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full outline-none text-sm bg-transparent"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">Email</label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <Mail size={16} className="ink-soft shrink-0" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full outline-none text-sm bg-transparent"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">Nomor HP</label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <Phone size={16} className="ink-soft shrink-0" />
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="08xx-xxxx-xxxx"
+                    className="w-full outline-none text-sm bg-transparent font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">Alamat</label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <MapPin size={16} className="ink-soft shrink-0" />
+                  <input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full outline-none text-sm bg-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">Password</label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <KeyRound size={16} className="ink-soft shrink-0" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={8}
+                    className="w-full outline-none text-sm bg-transparent"
+                    required
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="tap btn-primary w-full text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {submitting ? "Memproses…" : "Daftar"} <ArrowRight size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setError(""); }}
+                className="tap chip text-primary font-semibold w-full text-center"
+              >
+                Sudah punya akun? Masuk
+              </button>
+            </form>
+          )}
+
+          {mode === "daftar" && daftarType === "pelaku_usaha" && (
             <form onSubmit={submitPelakuUsahaRegister} className="space-y-4">
               <div>
                 <label className="chip ink-soft uppercase block mb-2 font-semibold">Nama Lengkap</label>
