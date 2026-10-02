@@ -20,7 +20,11 @@ export function WargaBeranda() {
   const notifications = useNotifications(profile?.id);
   const { pickups } = useWargaPickups(profile?.id);
 
-  const nextPickup = pickups.find((p) => p.status === "Dijadwalkan" || p.status === "Dalam Perjalanan");
+  const activePickups = pickups.filter(
+    (p) =>
+      p.status === "Dijadwalkan" ||
+      p.status === "Dalam Perjalanan"
+  );
 
   return (
     <div className="space-y-6">
@@ -44,20 +48,39 @@ export function WargaBeranda() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="md:col-span-2" hoverable>
-          <SectionTitle eyebrow="Terjadwal" title="Pickup Terdekat" />
-          {nextPickup ? (
-            <div className="flex items-center gap-4">
-              <IconBadge icon={Recycle} tone="primary" size={48} iconSize={21} />
-              <div className="flex-1">
-                <p className="font-semibold ink">
-                  {nextPickup.jenis} — estimasi {nextPickup.volume_kg ?? "?"} kg
-                </p>
-                <p className="text-sm ink-soft mt-0.5">{nextPickup.alamat}</p>
-              </div>
-              <StatusChip status={nextPickup.status} />
+          <SectionTitle eyebrow="Pickup" title="Pickup Aktif" />
+
+          {activePickups.length > 0 ? (
+            <div className="divide-y divide-line">
+              {activePickups.map((pickup) => (
+                <div
+                  key={pickup.id}
+                  className="flex items-center gap-4 py-4 first:pt-0 last:pb-0"
+                >
+                  <IconBadge
+                    icon={Recycle}
+                    tone="primary"
+                    size={48}
+                    iconSize={21}
+                  />
+
+                  <div className="flex-1">
+                    <p className="font-semibold ink">
+                      {pickup.jenis} — estimasi {pickup.volume_kg ?? "?"} kg
+                    </p>
+                    <p className="text-sm ink-soft mt-0.5">
+                      {pickup.alamat}
+                    </p>
+                  </div>
+
+                  <StatusChip status={pickup.status} />
+                </div>
+              ))}
             </div>
           ) : (
-            <p className="text-sm ink-soft">Belum ada permintaan pickup terjadwal.</p>
+            <p className="text-sm ink-soft">
+              Belum ada pickup aktif.
+            </p>
           )}
         </Card>
         <Card hoverable>

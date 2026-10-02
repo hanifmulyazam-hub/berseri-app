@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Sparkles, Bell, LogOut } from "lucide-react";
 import { TOKENS, ROLES, NAV } from "./features/shared/tokens";
 import { LoginScreen } from "./features/auth/LoginScreen";
+
+import { PelakuUsahaOnboarding } from "./features/pelaku-usaha/PelakuUsahaOnboarding";
+
 import { useAuth } from "./context/AuthContext";
 
 import { WargaBeranda } from "./features/warga/WargaBeranda";
@@ -9,15 +12,26 @@ import { WargaPickup } from "./features/warga/WargaPickup";
 import { WargaBank } from "./features/warga/WargaBank";
 import { WargaEdukasi } from "./features/warga/WargaEdukasi";
 import { WargaPeta } from "./features/warga/WargaPeta";
-import { PetugasTugas } from "./features/petugas/PetugasTugas";
-import { PetugasRiwayat } from "./features/petugas/PetugasRiwayat";
+// import { PetugasTugas } from "./features/petugas/PetugasTugas";
+// import { PetugasRiwayat } from "./features/petugas/PetugasRiwayat";
 import { BankScan } from "./features/bank/BankScan";
 import { BankRekap } from "./features/bank/BankRekap";
+import { BankPengelolaan } from "./features/bank/BankPengelolaan";
+import { BankRiwayat } from "./features/bank/BankRiwayat";
+
 import { AdminMonitoring } from "./features/admin/AdminMonitoring";
 import { AdminKelembagaan } from "./features/admin/AdminKelembagaan";
 import { AdminPengguna } from "./features/admin/AdminPengguna";
 import { AdminSOP } from "./features/admin/AdminSOP";
 import { AdminLaporan } from "./features/admin/AdminLaporan";
+import { AdminPickup } from "./features/admin/AdminPickup";
+import { AdminPickupManual } from "./features/admin/AdminPickupManual";
+import { AdminRiwayatPickup } from "./features/admin/AdminRiwayatPickup";
+import { AdminPickupPage } from "./features/admin/AdminPickupPage";
+
+import { PelakuUsahaBeranda } from "./features/pelaku-usaha/PelakuUsahaBeranda";
+import { PelakuUsahaPengelolaan } from "./features/pelaku-usaha/PelakuUsahaPengelolaan";
+import { PelakuUsahaRiwayat } from "./features/pelaku-usaha/PelakuUsahaRiwayat";
 
 const CONTENT_MAP = {
   "warga-beranda": WargaBeranda,
@@ -25,19 +39,29 @@ const CONTENT_MAP = {
   "warga-banksampah": WargaBank,
   "warga-edukasi": WargaEdukasi,
   "warga-peta": WargaPeta,
-  "petugas-tugas": PetugasTugas,
-  "petugas-riwayat": PetugasRiwayat,
+  // "petugas-tugas": PetugasTugas,
+  // "petugas-riwayat": PetugasRiwayat,
   "bank-scan": BankScan,
   "bank-rekap": BankRekap,
+  "bank-pengelolaan": BankPengelolaan,
+  "bank-riwayat": BankRiwayat,
+
   "admin-monitoring": AdminMonitoring,
   "admin-kelembagaan": AdminKelembagaan,
   "admin-sop": AdminSOP,
+  "admin-pickup": AdminPickup,
+  "admin-pickup-manual": AdminPickupPage,
+  "admin-riwayat-pickup": AdminRiwayatPickup,
   "admin-laporan": AdminLaporan,
   "superadmin-monitoring": AdminMonitoring,
   "superadmin-kelembagaan": AdminKelembagaan,
   "superadmin-pengguna": AdminPengguna,
   "superadmin-sop": AdminSOP,
   "superadmin-laporan": AdminLaporan,
+
+  "pelaku_usaha-beranda": PelakuUsahaBeranda,
+  "pelaku_usaha-pengelolaan": PelakuUsahaPengelolaan,
+  "pelaku_usaha-riwayat": PelakuUsahaRiwayat,
 };
 
 export default function BerseriApp() {
@@ -78,7 +102,7 @@ export default function BerseriApp() {
             <p className="chip bg-clay-tint text-clay px-3.5 py-2.5 rounded-xl inline-block">{profileError}</p>
           )}
           <p className="chip ink-soft">
-            Kalau ini akun Petugas/Bank/Admin, minta Admin Dinas LH menambahkan profil Anda di database.
+            Kalau ini akun Bank/Admin, minta Admin Dinas LH menambahkan profil Anda di database.
             Kalau ini seharusnya akun Warga, coba keluar lalu daftar ulang.
           </p>
           <button onClick={signOut} className="tap btn-primary text-white font-semibold rounded-xl px-5 py-2.5">
@@ -102,7 +126,8 @@ export default function BerseriApp() {
   const RoleIcon = ROLES.find((r) => r.id === activeRole).icon;
 
   return (
-    <div className="min-h-screen bg-paper font-body ink">
+    <PelakuUsahaOnboardingGate role={role}>
+      <div className="min-h-screen bg-paper font-body ink">
       <style>{TOKENS}</style>
 
       {/* Top bar */}
@@ -153,7 +178,7 @@ export default function BerseriApp() {
         <div className="spectrum h-[3px] w-full" />
       </header>
 
-      <div className="max-w-6xl mx-auto flex">
+      <div className="max-w-[1440px] mx-auto flex">
         {/* Sidebar */}
         <aside className="hidden md:block w-56 shrink-0 border-r border-line min-h-[calc(100vh-77px)] px-4 py-6">
           <div className="chip ink-soft uppercase px-2 mb-3 flex items-center gap-1.5 font-semibold">
@@ -200,5 +225,18 @@ export default function BerseriApp() {
         ))}
       </nav>
     </div>
+  </PelakuUsahaOnboardingGate>
+  );
+}
+
+function PelakuUsahaOnboardingGate({ role, children }) {
+  if (role !== "pelaku_usaha") {
+    return children;
+  }
+
+  return (
+    <PelakuUsahaOnboarding>
+      {children}
+    </PelakuUsahaOnboarding>
   );
 }

@@ -85,6 +85,7 @@ export const TOKENS = `
 
 export const ROLES = [
   { id: "warga", label: "Warga", icon: Leaf },
+  { id: "pelaku_usaha", label: "Pelaku Usaha", icon: Building2 },
   { id: "petugas", label: "Petugas", icon: Truck },
   { id: "bank", label: "Bank Sampah", icon: Store },
   { id: "admin", label: "Admin Dinas LH", icon: ShieldCheck },
@@ -92,9 +93,14 @@ export const ROLES = [
 ];
 
 export const NAV = {
+  pelaku_usaha: [
+    { id: "beranda", label: "Beranda", icon: Home },
+    { id: "pengelolaan", label: "Input Data", icon: Recycle },
+    { id: "riwayat", label: "Riwayat", icon: ClipboardList },
+  ],
   warga: [
     { id: "beranda", label: "Beranda", icon: Home },
-    { id: "pickup", label: "Request Pickup", icon: Recycle },
+    // { id: "pickup", label: "Request Pickup", icon: Recycle },
     { id: "banksampah", label: "Bank Sampah", icon: Wallet },
     { id: "edukasi", label: "Edukasi", icon: BookOpen },
     { id: "peta", label: "Peta Unit", icon: MapPin },
@@ -104,11 +110,18 @@ export const NAV = {
     { id: "riwayat", label: "Riwayat Tugas", icon: Clock },
   ],
   bank: [
-    { id: "scan", label: "Scan Member", icon: QrCode },
-    { id: "rekap", label: "Rekap Unit", icon: BarChart3 },
+    // Legacy operasional Bank Sampah — dipertahankan untuk rollback
+    // { id: "scan", label: "Scan Member", icon: QrCode },
+
+    { id: "rekap", label: "Beranda", icon: Home },
+    { id: "pengelolaan", label: "Input Data", icon: Recycle },
+    { id: "riwayat", label: "Riwayat", icon: ClipboardList },
   ],
   admin: [
     { id: "monitoring", label: "Monitoring", icon: BarChart3 },
+    // { id: "pickup", label: "Kelola Pickup", icon: ClipboardList },
+    { id: "pickup-manual", label: "Pickup", icon: Truck },
+    // { id: "riwayat-pickup", label: "Riwayat Pickup", icon: Clock },
     { id: "kelembagaan", label: "Kelembagaan", icon: Building2 },
     { id: "sop", label: "SOP & Edukasi", icon: BookOpen },
     { id: "laporan", label: "Laporan", icon: FileDown },

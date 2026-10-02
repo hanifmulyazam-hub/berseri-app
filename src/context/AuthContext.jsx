@@ -36,22 +36,50 @@ export function AuthProvider({ children }) {
     }
     if (error) console.error("[AuthContext] profiles select failed:", error);
 
-    // First sign-in for a self-registered Warga: create their profile row
-    // from the metadata collected at sign-up.
+    // First sign-in for a self-registered Pelaku Usaha:
+    // create their profile row from Clerk metadata.
     const meta = user?.unsafeMetadata;
-    if (meta?.role === "warga") {
+    if (meta?.role === "pelaku_usaha") {
       const { data: created, error: insertError } = await supabase
         .from("profiles")
         .insert({
           id: userId,
-          role: "warga",
-          full_name: meta.full_name || user?.fullName || user?.primaryEmailAddress?.emailAddress || "Warga",
+          role: "pelaku_usaha",
+          full_name:
+            meta.full_name ||
+            user?.fullName ||
+            user?.primaryEmailAddress?.emailAddress ||
+            "Pelaku Usaha",
           phone: meta.phone || null,
           address: meta.address || null,
         })
         .select()
         .single();
       if (!insertError) {
+        // Email/password registration already collects business information.
+        // Google OAuth does not, so its business profile will be completed
+        // through the onboarding screen after authentication.
+        if (meta.nama_usaha && meta.jenis_usaha) {
+          const { error: businessError } = await supabase
+            .from("pelaku_usaha")
+            .insert({
+              profile_id: userId,
+              nama_usaha: meta.nama_usaha,
+              jenis_usaha: meta.jenis_usaha,
+              alamat: meta.address || null,
+              wilayah: null,
+            });
+
+          if (businessError) {
+            console.error(
+              "[AuthContext] pelaku_usaha insert failed:",
+              businessError
+            );
+            setProfileError(businessError.message);
+            return;
+          }
+        }
+
         setProfile(created);
         return;
       }

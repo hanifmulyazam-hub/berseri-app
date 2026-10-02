@@ -1,25 +1,15 @@
 import { useState } from "react";
-import { useSignIn, useSignUp, AuthenticateWithRedirectCallback } from "@clerk/react";
-import { useSignIn as useLegacySignIn, useSignUp as useLegacySignUp } from "@clerk/react/legacy";
+import { useSignIn, useSignUp } from "@clerk/react";
+import { useSignUp as useLegacySignUp } from "@clerk/react/legacy";
 import { Sparkles, Mail, KeyRound, ArrowRight, User, Phone, MapPin } from "lucide-react";
 
 export function LoginScreen() {
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
-  // Google uses the older, stable clerk-js API (authenticateWithRedirect +
-  // <AuthenticateWithRedirectCallback/>) because the newer signal-based
-  // signUp.sso() doesn't reliably finish activating the session after the
-  // full-page redirect back from Google.
-  const { signIn: legacySignIn } = useLegacySignIn();
+
+  // Google OAuth uses Clerk's legacy authenticateWithRedirect flow.
+  // The OAuth callback is handled separately at /sso-callback.
   const { signUp: legacySignUp } = useLegacySignUp();
-  // Specifically an OAuth (Google) attempt in progress/just completed — NOT
-  // just "any signIn/signUp status truthy", since that would also misfire
-  // for plain password login/reset (those set a status too) and send the
-  // user to Clerk's hosted Account Portal instead of finishing here.
-  const isOAuthReturn = Boolean(
-    legacySignIn?.firstFactorVerification?.strategy?.startsWith("oauth_") ||
-    legacySignUp?.verifications?.externalAccount?.strategy?.startsWith("oauth_")
-  );
 
   const [mode, setMode] = useState("login"); // login | daftar | verify | lupa | lupa-reset
   const [email, setEmail] = useState("");
@@ -28,6 +18,8 @@ export function LoginScreen() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [businessType, setBusinessType] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -50,14 +42,21 @@ export function LoginScreen() {
     setSubmitting(false);
   };
 
-  const submitWargaRegister = async (e) => {
+  const submitPelakuUsahaRegister = async (e) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     const { error: err } = await signUp.password({
       emailAddress: email,
       password,
-      unsafeMetadata: { role: "warga", full_name: fullName, phone, address },
+      unsafeMetadata: {
+        role: "pelaku_usaha",
+        full_name: fullName,
+        phone,
+        address,
+        nama_usaha: businessName,
+        jenis_usaha: businessType,
+      },
     });
     if (err) {
       setError(friendlyError(err));
@@ -141,27 +140,20 @@ export function LoginScreen() {
       // so a brand-new Google account gets created as "warga" (Google is
       // only ever a self-service Warga entry point here, same as the
       // email/password registration form). <AuthenticateWithRedirectCallback/>
-      // below finishes activating the session once Google sends us back.
+      // /sso-callback finishes activating the session once Google sends us back.
       await legacySignUp.authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectUrl: window.location.origin,
+        redirectUrl: `${window.location.origin}/sso-callback`,
         redirectUrlComplete: window.location.origin,
-        unsafeMetadata: { role: "warga" },
+        unsafeMetadata: {
+          role: "pelaku_usaha",
+        },
       });
     } catch (err) {
       setError(friendlyError(err));
       setSubmitting(false);
     }
   };
-
-  if (isOAuthReturn) {
-    return (
-      <div className="min-h-screen bg-paper font-body ink flex items-center justify-center">
-        <AuthenticateWithRedirectCallback />
-        <p className="chip ink-soft">Menyelesaikan proses masuk…</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-paper font-body ink flex items-center justify-center p-4 md:p-8">
@@ -377,7 +369,7 @@ export function LoginScreen() {
           )}
 
           {mode === "daftar" && (
-            <form onSubmit={submitWargaRegister} className="space-y-4">
+            <form onSubmit={submitPelakuUsahaRegister} className="space-y-4">
               <div>
                 <label className="chip ink-soft uppercase block mb-2 font-semibold">Nama Lengkap</label>
                 <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
@@ -388,6 +380,42 @@ export function LoginScreen() {
                     className="w-full outline-none text-sm bg-transparent"
                     required
                   />
+                </div>
+              </div>
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">
+                  Nama Usaha / Instansi
+                </label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <input
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Contoh: PT Maju Bersama"
+                    className="w-full outline-none text-sm bg-transparent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="chip ink-soft uppercase block mb-2 font-semibold">
+                  Jenis Pelaku Usaha
+                </label>
+                <div className="flex items-center border border-line rounded-xl px-4 py-3 gap-2.5">
+                  <select
+                    value={businessType}
+                    onChange={(e) => setBusinessType(e.target.value)}
+                    className="w-full outline-none text-sm bg-transparent"
+                    required
+                  >
+                    <option value="">Pilih jenis usaha</option>
+                    <option value="BUMDes">BUMDes</option>
+                    <option value="PT">PT / Perusahaan</option>
+                    <option value="Sekolah">Sekolah</option>
+                    <option value="Hotel">Hotel</option>
+                    <option value="Perkantoran">Perkantoran</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
                 </div>
               </div>
               <div>

@@ -128,3 +128,188 @@ export async function setProfileRole(id, role) {
   const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
   if (error) throw error;
 }
+
+export function useAdminPickupHistory() {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+
+    supabase
+      .from("pickup_results")
+      .select(`
+        *,
+        pickup_compositions (
+          id,
+          category,
+          percentage
+        )
+      `)
+      .order("completed_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Gagal memuat riwayat pickup:", error);
+          setHistory([]);
+        } else {
+          setHistory(data ?? []);
+        }
+
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { history, loading, reload };
+}
+
+const ADMIN_PICKUP_SELECT =
+  "*, warga:profiles!pickup_requests_warga_id_fkey(full_name)";
+
+export function useAdminPickupTasks() {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+
+    supabase
+      .from("pickup_requests")
+      .select(ADMIN_PICKUP_SELECT)
+      .in("status", ["Dijadwalkan", "Dalam Perjalanan", "Telah Dijemput"])
+      .order("scheduled_at", { ascending: true, nullsFirst: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Gagal memuat pickup aktif:", error);
+          setTasks([]);
+        } else {
+          setTasks(data ?? []);
+        }
+
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { tasks, loading, reload };
+}
+
+export async function startAdminPickup(pickupId, adminId) {
+  const { error } = await supabase
+    .from("pickup_requests")
+    .update({
+      status: "Dalam Perjalanan",
+      petugas_id: adminId,
+    })
+    .eq("id", pickupId);
+
+  if (error) throw error;
+}
+
+export async function markAdminPickupCollected(pickupId, adminId) {
+  const { error } = await supabase
+    .from("pickup_requests")
+    .update({
+      status: "Telah Dijemput",
+      petugas_id: adminId,
+    })
+    .eq("id", pickupId);
+
+  if (error) throw error;
+}
+
+export async function completeAdminPickup(
+  pickupId,
+  actualVolumeKg,
+  resultPhoto,
+  adminId
+) {
+  let result_photo_url = null;
+
+  if (resultPhoto) {
+    const path = `${adminId}/results/${pickupId}-${Date.now()}-${resultPhoto.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("pickup-photos")
+      .upload(path, resultPhoto);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    result_photo_url = supabase.storage
+      .from("pickup-photos")
+      .getPublicUrl(path).data.publicUrl;
+  }
+
+  const { error } = await supabase
+    .from("pickup_requests")
+    .update({
+      status: "Selesai",
+      actual_volume_kg: actualVolumeKg,
+      result_photo_url,
+      completed_at: new Date().toISOString(),
+      petugas_id: adminId,
+    })
+    .eq("id", pickupId);
+
+  if (error) throw error;
+}
+
+export async function saveAdminPickupResult({
+  pickupId,
+  actualVolumeKg,
+  wasteSource,
+  compositions,
+  resultPhoto,
+  adminId,
+}) {
+  const compositionTotal = Object.values(compositions).reduce(
+    (total, percentage) => total + Number(percentage || 0),
+    0
+  );
+
+  if (Math.abs(compositionTotal - 100) >= 0.001) {
+    throw new Error("Total komposisi sampah harus 100%.");
+  }
+
+  let resultPhotoUrl = null;
+
+  if (resultPhoto) {
+    const path = `${adminId}/results/${pickupId}-${Date.now()}-${resultPhoto.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("pickup-photos")
+      .upload(path, resultPhoto);
+
+    if (uploadError) throw uploadError;
+
+    resultPhotoUrl = supabase.storage
+      .from("pickup-photos")
+      .getPublicUrl(path).data.publicUrl;
+  }
+
+  const { data: resultId, error } = await supabase.rpc(
+    "complete_system_pickup",
+    {
+      p_pickup_id: pickupId,
+      p_actual_volume_kg: actualVolumeKg,
+      p_waste_source: wasteSource,
+      p_compositions: compositions,
+      p_result_photo_url: resultPhotoUrl,
+      p_admin_id: adminId,
+    }
+  );
+
+  if (error) throw error;
+
+  console.log("Pickup berhasil diselesaikan:", resultId);
+
+  return resultId;
+}
