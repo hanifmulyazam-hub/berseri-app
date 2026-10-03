@@ -120,7 +120,7 @@ export const NAV = {
   admin: [
     { id: "monitoring", label: "Monitoring", icon: BarChart3 },
     // { id: "pickup", label: "Kelola Pickup", icon: ClipboardList },
-    { id: "pickup-manual", label: "Pickup", icon: Truck },
+    { id: "pickup-manual", label: "Input Data Sampah", icon: Truck },
     // { id: "riwayat-pickup", label: "Riwayat Pickup", icon: Clock },
     { id: "kelembagaan", label: "Kelembagaan", icon: Building2 },
     { id: "sop", label: "SOP & Edukasi", icon: BookOpen },

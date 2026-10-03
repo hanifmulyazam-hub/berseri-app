@@ -11,7 +11,7 @@ export function AdminPickupPage() {
       {/* Header */}
       <div>
         <h1 className="font-display text-2xl font-bold">
-          Pickup
+          Input Data Sampah
         </h1>
 
         <p className="text-sm ink-soft mt-1">
