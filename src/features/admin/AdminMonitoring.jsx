@@ -1,4 +1,4 @@
-import { MapPin, Users, Package, Wallet, CheckCircle2 } from "lucide-react";
+import { Users, Package, Wallet } from "lucide-react";
 import { Card, IconBadge, SectionTitle } from "../shared/ui";
 import { useAdminStats } from "./hooks";
 
@@ -8,9 +8,8 @@ export function AdminMonitoring() {
   const cards = stats
     ? [
         { l: "Warga Terdaftar", v: stats.wargaCount.toLocaleString("id-ID"), icon: Users, tone: "primary" },
-        { l: "Volume Terkelola / Bulan", v: `${stats.volumeKg.toFixed(1)} kg`, icon: Package, tone: "teal" },
+        { l: "Volume Terkelola / Hari", v: `${stats.volumeKg.toFixed(1)} kg`, icon: Package, tone: "teal" },
         { l: "Nilai Ekonomi Tersalur", v: `Rp${stats.nilaiRp.toLocaleString("id-ID")}`, icon: Wallet, tone: "gold" },
-        { l: "Pickup Selesai / Bulan", v: stats.pickupSelesai.toLocaleString("id-ID"), icon: CheckCircle2, tone: "clay" },
       ]
     : [];
 
@@ -26,29 +25,21 @@ export function AdminMonitoring() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-3 h-64 flex items-center justify-center bg-primary-tint">
-          <div className="text-center ink-soft">
-            <IconBadge icon={MapPin} tone="primary" size={48} iconSize={22} />
-            <p className="chip mt-3">Peta sebaran volume sampah per wilayah</p>
-          </div>
-        </Card>
-        <Card className="lg:col-span-2">
-          <SectionTitle eyebrow="Per Wilayah" title="Volume Bulan Ini" />
-          {!stats || stats.wilayah.length === 0 ? (
-            <p className="text-sm ink-soft">Belum ada setoran bulan ini.</p>
-          ) : (
-            <ul className="space-y-3.5">
-              {stats.wilayah.map((w) => (
-                <li key={w.kelurahan} className="flex items-center justify-between text-sm">
-                  <span className="ink font-medium">{w.kelurahan}</span>
-                  <span className="font-mono ink-soft">{w.kg.toFixed(1)} kg</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+      <Card>
+        <SectionTitle eyebrow="Per Wilayah" title="Volume Hari Ini" />
+        {!stats || stats.wilayah.length === 0 ? (
+          <p className="text-sm ink-soft">Belum ada setoran hari ini.</p>
+        ) : (
+          <ul className="space-y-3.5">
+            {stats.wilayah.map((w) => (
+              <li key={w.kelurahan} className="flex items-center justify-between text-sm">
+                <span className="ink font-medium">{w.kelurahan}</span>
+                <span className="font-mono ink-soft">{w.kg.toFixed(1)} kg</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

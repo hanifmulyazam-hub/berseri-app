@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-function startOfMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function useAdminStats() {
@@ -11,36 +10,29 @@ export function useAdminStats() {
 
   useEffect(() => {
     async function load() {
-      const monthStart = startOfMonth();
+      const today = todayDateString();
 
-      const [{ count: wargaCount }, { data: setoran }, { count: pickupSelesai }] = await Promise.all([
+      const [{ count: wargaCount }, { data: setoran }] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "warga"),
         supabase
-          .from("bank_transactions")
-          .select("berat_kg, nilai_rp, bank_unit_id, bank_units(kelurahan)")
-          .eq("jenis", "Setor")
-          .gte("created_at", monthStart),
-        supabase
-          .from("pickup_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "Selesai")
-          .gte("created_at", monthStart),
+          .from("bank_manual_records")
+          .select("weight_kg, deposit_amount, bank_unit_id, bank_units(kelurahan)")
+          .eq("tanggal", today),
       ]);
 
-      const volumeKg = (setoran ?? []).reduce((sum, t) => sum + Number(t.berat_kg ?? 0), 0);
-      const nilaiRp = (setoran ?? []).reduce((sum, t) => sum + Number(t.nilai_rp ?? 0), 0);
+      const volumeKg = (setoran ?? []).reduce((sum, t) => sum + Number(t.weight_kg ?? 0), 0);
+      const nilaiRp = (setoran ?? []).reduce((sum, t) => sum + Number(t.deposit_amount ?? 0), 0);
 
       const byWilayah = {};
       for (const t of setoran ?? []) {
         const kel = t.bank_units?.kelurahan ?? "Tidak diketahui";
-        byWilayah[kel] = (byWilayah[kel] ?? 0) + Number(t.berat_kg ?? 0);
+        byWilayah[kel] = (byWilayah[kel] ?? 0) + Number(t.weight_kg ?? 0);
       }
 
       setStats({
         wargaCount: wargaCount ?? 0,
         volumeKg,
         nilaiRp,
-        pickupSelesai: pickupSelesai ?? 0,
         wilayah: Object.entries(byWilayah).map(([kelurahan, kg]) => ({ kelurahan, kg })),
       });
     }
