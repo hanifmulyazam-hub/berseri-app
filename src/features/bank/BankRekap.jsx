@@ -3,9 +3,8 @@ import { Card, IconBadge, SectionTitle } from "../shared/ui";
 import { useAuth } from "../../context/AuthContext";
 import { useBankUnit, useUnitTransactions } from "./hooks";
 
-function startOfMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+function currentYearMonth() {
+  return new Date().toISOString().slice(0, 7);
 }
 
 export function BankRekap() {
@@ -13,24 +12,20 @@ export function BankRekap() {
   const unit = useBankUnit(profile?.bank_unit_id);
   const transactions = useUnitTransactions(profile?.bank_unit_id);
 
-  const monthStart = startOfMonth();
-  const thisMonth = transactions.filter((t) => new Date(t.created_at) >= monthStart);
-  const setoranBulanIni = thisMonth
-    .filter((t) => t.jenis === "Setor")
-    .reduce((sum, t) => sum + Number(t.berat_kg ?? 0), 0);
+  const yearMonth = currentYearMonth();
+  const thisMonth = transactions.filter((t) => t.tanggal?.slice(0, 7) === yearMonth);
+  const setoranBulanIni = thisMonth.reduce((sum, t) => sum + Number(t.weight_kg ?? 0), 0);
 
   const byKategori = {};
   for (const t of transactions) {
-    byKategori[t.kategori] = (byKategori[t.kategori] ?? 0) + Number(t.berat_kg ?? 0);
+    byKategori[t.category] = (byKategori[t.category] ?? 0) + Number(t.weight_kg ?? 0);
   }
   const maxKategori = Math.max(1, ...Object.values(byKategori));
 
-  // bank_units.saldo_unit is never written to anywhere — compute the real
-  // balance from transactions instead, same way warga_saldo does.
-  const saldoUnit = transactions.reduce(
-    (sum, t) => sum + (t.jenis === "Setor" ? Number(t.nilai_rp ?? 0) : -Number(t.nilai_rp ?? 0)),
-    0
-  );
+  // Each manual record carries the officer's own running balance at the
+  // time it was entered — the most recent one (transactions is already
+  // ordered newest-first) is the current saldo unit.
+  const saldoUnit = Number(transactions[0]?.balance ?? 0);
 
   const stats = [
     { l: "Saldo Unit", v: `Rp${saldoUnit.toLocaleString("id-ID")}`, icon: Wallet, tone: "primary" },

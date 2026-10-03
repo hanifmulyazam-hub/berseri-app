@@ -42,7 +42,7 @@ export function useUnitTransactions(bankUnitId) {
   useEffect(() => {
     if (!bankUnitId) return;
     supabase
-      .from("bank_transactions")
+      .from("bank_manual_records")
       .select("*")
       .eq("bank_unit_id", bankUnitId)
       .order("created_at", { ascending: false })
