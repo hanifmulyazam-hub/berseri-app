@@ -1,7 +1,7 @@
 import { CheckCircle2, Bell, Sparkles, Recycle, Star } from "lucide-react";
-import { Card, IconBadge, Ring, SectionTitle, StatusChip } from "../shared/ui";
+import { Card, IconBadge, SectionTitle, StatusChip } from "../shared/ui";
 import { useAuth } from "../../context/AuthContext";
-import { useNotifications, useWargaPickups, useWargaSaldo } from "./hooks";
+import { useNotifications, useWargaPickups } from "./hooks";
 
 const NOTIF_ICONS = { bell: Bell, check: CheckCircle2, sparkles: Sparkles };
 
@@ -16,7 +16,6 @@ function timeAgo(iso) {
 
 export function WargaBeranda() {
   const { profile } = useAuth();
-  const saldo = useWargaSaldo(profile?.id);
   const notifications = useNotifications(profile?.id);
   const { pickups } = useWargaPickups(profile?.id);
 
@@ -29,20 +28,12 @@ export function WargaBeranda() {
   return (
     <div className="space-y-6">
       <div className="radiance rounded-3xl p-7 text-white relative overflow-hidden shadow-lift">
-        <div className="flex items-center justify-between relative z-10 gap-4">
-          <div>
-            <div className="chip opacity-80 uppercase mb-2 tracking-wider">Halo, selamat datang</div>
-            <h1 className="font-display text-3xl font-bold">{profile?.full_name ?? "Warga"}</h1>
-            <p className="text-sm opacity-90 mt-2 max-w-xs leading-relaxed">
-              {profile?.address ?? profile?.kelurahan ?? "Lengkapi alamat di profil Anda"}
-            </p>
-          </div>
-          <Ring pct={68} size={112}>
-            <span className="chip opacity-80">SALDO</span>
-            <span className="font-mono text-lg font-bold">
-              Rp{Math.round(saldo / 1000)}rb
-            </span>
-          </Ring>
+        <div className="relative z-10">
+          <div className="chip opacity-80 uppercase mb-2 tracking-wider">Halo, selamat datang</div>
+          <h1 className="font-display text-3xl font-bold">{profile?.full_name ?? "Warga"}</h1>
+          <p className="text-sm opacity-90 mt-2 max-w-xs leading-relaxed">
+            {profile?.address ?? profile?.kelurahan ?? "Lengkapi alamat di profil Anda"}
+          </p>
         </div>
       </div>
 

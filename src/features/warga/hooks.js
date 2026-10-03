@@ -1,22 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-export function useWargaSaldo(userId) {
-  const [saldo, setSaldo] = useState(0);
-
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("warga_saldo")
-      .select("saldo")
-      .eq("warga_id", userId)
-      .maybeSingle()
-      .then(({ data }) => setSaldo(data?.saldo ?? 0));
-  }, [userId]);
-
-  return saldo;
-}
-
 export function useNotifications(userId) {
   const [notifications, setNotifications] = useState([]);
 
@@ -72,22 +56,6 @@ export async function submitPickupRequest({ warga_id, jenis, volume_kg, alamat, 
     .from("pickup_requests")
     .insert({ warga_id, jenis, volume_kg, alamat, foto_url });
   if (error) throw error;
-}
-
-export function useWargaTransactions(userId) {
-  const [transactions, setTransactions] = useState([]);
-
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("bank_transactions")
-      .select("*")
-      .eq("warga_id", userId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setTransactions(data ?? []));
-  }, [userId]);
-
-  return transactions;
 }
 
 export function useEducationModules(userId) {
