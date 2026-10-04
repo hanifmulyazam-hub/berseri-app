@@ -138,50 +138,88 @@ export function AdminRiwayatPickup() {
                   </div>
 
                   {/* Composition */}
-                  {compositions.length > 0 && (
-                    <div className="mt-4">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Recycle
-                          size={13}
-                          className="text-primary"
-                        />
+                    {compositions.length > 0 && (
+                      <div className="mt-4">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Recycle
+                            size={13}
+                            className="text-primary"
+                          />
 
-                        <p className="text-xs font-semibold ink">
-                          Komposisi Sampah
-                        </p>
+                          <p className="text-xs font-semibold ink">
+                            Komposisi Sampah
+                          </p>
+                        </div>
+
+                        <div className="overflow-x-auto border border-line rounded-xl">
+                          <table className="w-full text-sm">
+                            <thead className="bg-paper">
+                              <tr>
+                                <th className="text-left px-4 py-3 text-xs font-semibold ink-soft">
+                                  Jenis Sampah
+                                </th>
+
+                                <th className="text-right px-4 py-3 text-xs font-semibold ink-soft">
+                                  Tertangani
+                                </th>
+
+                                <th className="text-right px-4 py-3 text-xs font-semibold ink-soft">
+                                  Tidak Tertangani
+                                </th>
+
+                                <th className="text-right px-4 py-3 text-xs font-semibold ink-soft">
+                                  Total
+                                </th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {compositions
+                                .filter(
+                                  (composition) =>
+                                    Number(composition.handled_kg || 0) > 0 ||
+                                    Number(composition.unhandled_kg || 0) > 0
+                                )
+                                .map((composition) => {
+                                  const handled = Number(
+                                    composition.handled_kg || 0
+                                  );
+
+                                  const unhandled = Number(
+                                    composition.unhandled_kg || 0
+                                  );
+
+                                  return (
+                                    <tr
+                                      key={composition.id}
+                                      className="border-t border-line"
+                                    >
+                                      <td className="px-4 py-3 font-medium ink">
+                                        {composition.category}
+                                      </td>
+
+                                      <td className="px-4 py-3 text-right text-primary font-semibold">
+                                        {handled.toLocaleString("id-ID")} kg
+                                      </td>
+
+                                      <td className="px-4 py-3 text-right ink">
+                                        {unhandled.toLocaleString("id-ID")} kg
+                                      </td>
+
+                                      <td className="px-4 py-3 text-right font-semibold ink">
+                                        {(handled + unhandled).toLocaleString(
+                                          "id-ID"
+                                        )}{" "}
+                                        kg
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-
-                      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-                        {compositions
-                          .filter(
-                            (composition) =>
-                              Number(composition.percentage) > 0
-                          )
-                          .sort(
-                            (a, b) =>
-                              Number(b.percentage) -
-                              Number(a.percentage)
-                          )
-                          .map((composition) => (
-                            <div
-                              key={composition.id}
-                              className="flex items-center justify-between gap-3 border border-line rounded-xl px-3 py-2.5"
-                            >
-                              <span className="text-xs ink-soft">
-                                {composition.category}
-                              </span>
-
-                              <span className="text-sm font-semibold text-primary shrink-0">
-                                {Number(
-                                  composition.percentage
-                                ).toLocaleString("id-ID")}
-                                %
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Result photo */}
                   {pickup.result_photo_url && (

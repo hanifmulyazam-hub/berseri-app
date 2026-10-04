@@ -47,10 +47,21 @@ export function AdminPickupManual() {
   const [formStep, setFormStep] = useState(1);
   const [composition, setComposition] = useState({});
 
-  const compositionTotal = WASTE_COMPOSITION_CATEGORIES.reduce(
-    (total, category) => total + Number(composition[category] || 0),
+  const handledTotal = WASTE_COMPOSITION_CATEGORIES.reduce(
+    (total, category) =>
+      total + Number(composition[category]?.handled || 0),
     0
   );
+
+  const unhandledTotal = WASTE_COMPOSITION_CATEGORIES.reduce(
+    (total, category) =>
+      total + Number(composition[category]?.unhandled || 0),
+    0
+  );
+
+  const compositionTotal = handledTotal + unhandledTotal;
+  const actualWeight = Number(actualVolumeKg) || 0;
+  const weightDifference = actualWeight - compositionTotal;
 
   const canContinue =
     producerName.trim() &&
@@ -60,7 +71,8 @@ export function AdminPickupManual() {
     wasteSource;
 
   const compositionIsValid =
-    Math.abs(compositionTotal - 100) < 0.001;
+    actualWeight > 0 &&
+    Math.abs(compositionTotal - actualWeight) < 0.001;
 
   const handleSave = async () => {
     if (!canContinue || !compositionIsValid || saving) return;
@@ -296,60 +308,106 @@ export function AdminPickupManual() {
                 </p>
 
                 <p className="text-xs ink-soft mt-1">
-                  Masukkan persentase setiap jenis sampah.
-                  Total seluruh komposisi harus tepat 100%.
+                  Masukkan berat sampah tertangani dan tidak tertangani
+                  untuk setiap jenis sampah. Total harus sama dengan berat aktual.
                 </p>
               </div>
 
               {/* Composition inputs */}
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="hidden md:grid md:grid-cols-[1fr_180px_180px] gap-4 px-1">
+                  <span />
+                  <span className="text-xs font-semibold ink-soft">
+                    Tertangani (kg)
+                  </span>
+                  <span className="text-xs font-semibold ink-soft">
+                    Tidak Tertangani (kg)
+                  </span>
+                </div>
+
                 {WASTE_COMPOSITION_CATEGORIES.map((category) => (
-                  <div key={category}>
-                    <label className="block text-sm font-semibold mb-2">
+                  <div
+                    key={category}
+                    className="grid md:grid-cols-[1fr_180px_180px] gap-3 md:gap-4 items-center"
+                  >
+                    <label className="text-sm font-semibold">
                       {category}
                     </label>
 
-                    <div className="relative">
+                    <div>
+                      <label className="md:hidden block text-xs ink-soft mb-1">
+                        Tertangani (kg)
+                      </label>
                       <input
                         type="number"
                         min="0"
-                        max="100"
                         step="0.1"
-                        value={composition[category] ?? ""}
+                        value={composition[category]?.handled ?? ""}
                         onChange={(e) => {
                           const rawValue = e.target.value;
 
                           if (rawValue === "") {
                             setComposition((current) => ({
                               ...current,
-                              [category]: "",
+                              [category]: {
+                                ...current[category],
+                                handled: "",
+                              },
                             }));
                             return;
                           }
 
-                          const numericValue = Number(rawValue);
-
-                          if (!Number.isFinite(numericValue)) {
-                            return;
-                          }
-
-                          const validValue = Math.min(
-                            100,
-                            Math.max(0, numericValue)
-                          );
+                          const value = Math.max(0, Number(rawValue));
 
                           setComposition((current) => ({
                             ...current,
-                            [category]: validValue,
+                            [category]: {
+                              ...current[category],
+                              handled: value,
+                            },
                           }));
                         }}
                         placeholder="0"
-                        className="w-full border border-line rounded-xl px-4 py-3 pr-12 bg-surface outline-none focus:ring-2 focus:ring-green-700/20"
+                        className="w-full border border-line rounded-xl px-4 py-3 bg-surface outline-none focus:ring-2 focus:ring-green-700/20"
                       />
+                    </div>
 
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm ink-soft">
-                        %
-                      </span>
+                    <div>
+                      <label className="md:hidden block text-xs ink-soft mb-1">
+                        Tidak Tertangani (kg)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={composition[category]?.unhandled ?? ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value;
+
+                          if (rawValue === "") {
+                            setComposition((current) => ({
+                              ...current,
+                              [category]: {
+                                ...current[category],
+                                unhandled: "",
+                              },
+                            }));
+                            return;
+                          }
+
+                          const value = Math.max(0, Number(rawValue));
+
+                          setComposition((current) => ({
+                            ...current,
+                            [category]: {
+                              ...current[category],
+                              unhandled: value,
+                            },
+                          }));
+                        }}
+                        placeholder="0"
+                        className="w-full border border-line rounded-xl px-4 py-3 bg-surface outline-none focus:ring-2 focus:ring-green-700/20"
+                      />
                     </div>
                   </div>
                 ))}
@@ -357,33 +415,54 @@ export function AdminPickupManual() {
 
               {/* Total */}
               <div
-                className={`border rounded-xl px-4 py-4 flex items-center justify-between ${
+                className={`border rounded-xl px-4 py-4 ${
                   compositionIsValid
                     ? "bg-primary-tint border-green-200"
                     : "bg-paper border-line"
                 }`}
               >
-                <div>
-                  <p className="text-sm font-semibold">
-                    Total Komposisi
-                  </p>
+                <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <span className="ink-soft">Tertangani</span>
+                    <span className="font-semibold">{handledTotal} kg</span>
+                  </div>
 
-                  <p className="text-xs ink-soft mt-0.5">
-                    {compositionIsValid
-                      ? "Komposisi sudah lengkap."
-                      : "Total harus mencapai 100%."}
-                  </p>
+                  <div className="flex justify-between gap-4">
+                    <span className="ink-soft">Tidak Tertangani</span>
+                    <span className="font-semibold">{unhandledTotal} kg</span>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <span className="ink-soft">Total Komposisi</span>
+                    <span className="font-semibold">{compositionTotal} kg</span>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <span className="ink-soft">Berat Aktual</span>
+                    <span className="font-semibold">{actualWeight} kg</span>
+                  </div>
                 </div>
 
-                <span
-                  className={`font-mono text-lg font-bold ${
-                    compositionIsValid
-                      ? "text-primary"
-                      : "text-clay"
-                  }`}
-                >
-                  {compositionTotal}%
-                </span>
+                <div className="border-t border-line mt-3 pt-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {compositionIsValid
+                        ? "Komposisi sudah sesuai."
+                        : "Komposisi belum sesuai."}
+                    </p>
+                    <p className="text-xs ink-soft mt-0.5">
+                      Total komposisi harus sama dengan berat aktual.
+                    </p>
+                  </div>
+
+                  <span
+                    className={`font-mono text-lg font-bold ${
+                      compositionIsValid ? "text-primary" : "text-clay"
+                    }`}
+                  >
+                    Selisih {Math.abs(weightDifference)} kg
+                  </span>
+                </div>
               </div>
             </>
           )}

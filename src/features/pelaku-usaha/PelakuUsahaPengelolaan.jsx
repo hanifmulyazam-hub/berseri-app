@@ -13,6 +13,7 @@ const CATEGORIES = [
   "Karet",
   "Residu",
   "B3",
+  "Lainnya",
 ];
 
 const createEmptyValues = () =>

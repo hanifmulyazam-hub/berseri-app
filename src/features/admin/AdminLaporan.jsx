@@ -15,6 +15,7 @@ const CATEGORIES = [
   "Karet",
   "Residu",
   "B3",
+  "Lainnya",
 ];
 
 function getDefaultDates() {
@@ -48,6 +49,7 @@ export function AdminLaporan() {
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [error, setError] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const [expandedPickupId, setExpandedPickupId] = useState(null);
 
   useEffect(() => {
     async function loadBusinesses() {
@@ -187,6 +189,47 @@ export function AdminLaporan() {
       return;
     }
 
+    /*
+      * INPUT DATA SAMPAH / PICKUP ADMIN
+      */
+      if (reportType === "pickup") {
+        const { data, error: queryError } = await supabase
+          .from("pickup_results")
+          .select(`
+            id,
+            berat_actual,
+            sumber_sampah,
+            completed_at,
+            nama_penghasil,
+            alamat,
+            pickup_compositions (
+              id,
+              category,
+              handled_kg,
+              unhandled_kg
+            )
+          `)
+          .gte("completed_at", `${startDate}T00:00:00`)
+          .lte("completed_at", `${endDate}T23:59:59`)
+          .order("completed_at", { ascending: true });
+
+        if (queryError) {
+          console.error(
+            "[AdminLaporan] pickup results query failed:",
+            queryError
+          );
+
+          setError(queryError.message);
+          setRecords([]);
+          setLoadingRecords(false);
+          return;
+        }
+
+        setRecords(data || []);
+        setLoadingRecords(false);
+        return;
+      }
+
         /*
         * BANK SAMPAH
         */
@@ -238,6 +281,34 @@ export function AdminLaporan() {
         setRecords(data || []);
         setLoadingRecords(false);
       };
+
+  const pickupTotals = useMemo(() => {
+    if (reportType !== "pickup") {
+      return {
+        weight: 0,
+        handled: 0,
+        unhandled: 0,
+      };
+    }
+
+    return records.reduce(
+      (acc, record) => {
+        acc.weight += Number(record.berat_actual || 0);
+
+        (record.pickup_compositions || []).forEach((detail) => {
+          acc.handled += Number(detail.handled_kg || 0);
+          acc.unhandled += Number(detail.unhandled_kg || 0);
+        });
+
+        return acc;
+      },
+      {
+        weight: 0,
+        handled: 0,
+        unhandled: 0,
+      }
+    );
+  }, [records, reportType]);
 
   const bankTotals = useMemo(() => {
     if (reportType !== "bank_sampah") {
@@ -521,6 +592,277 @@ export function AdminLaporan() {
 
           return;
         }
+
+    if (reportType === "pickup") {
+      if (!records.length) {
+        setError("Tidak ada data Input Data Sampah untuk diekspor.");
+        return;
+      }
+
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const formatDate = (date) =>
+        new Date(date).toLocaleDateString("id-ID");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("LAPORAN DATA PENGAMBILAN SAMPAH", 14, 16);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(
+        `Periode: ${formatDate(`${startDate}T00:00:00`)} s.d. ${formatDate(
+          `${endDate}T00:00:00`
+        )}`,
+        14,
+        23
+      );
+
+      doc.setFontSize(9);
+
+      doc.text(
+        `Pencatatan: ${records.length}`,
+        14,
+        30
+      );
+
+      doc.text(
+        `Total Sampah: ${pickupTotals.weight.toFixed(2)} kg`,
+        60,
+        30
+      );
+
+      doc.text(
+        `Tertangani: ${pickupTotals.handled.toFixed(2)} kg`,
+        115,
+        30
+      );
+
+      doc.text(
+        `Tidak Tertangani: ${pickupTotals.unhandled.toFixed(2)} kg`,
+        165,
+        30
+      );
+
+      let currentY = 36;
+
+      records.forEach((record, index) => {
+        const compositions = (record.pickup_compositions || []).filter(
+          (detail) =>
+            Number(detail.handled_kg || 0) > 0 ||
+            Number(detail.unhandled_kg || 0) > 0
+        );
+
+        const handled = compositions.reduce(
+          (sum, detail) => sum + Number(detail.handled_kg || 0),
+          0
+        );
+
+        const unhandled = compositions.reduce(
+          (sum, detail) => sum + Number(detail.unhandled_kg || 0),
+          0
+        );
+
+        // Informasi utama entry
+        autoTable(doc, {
+          startY: currentY,
+
+          head: [[
+            "No",
+            "Tanggal",
+            "Penghasil Sampah",
+            "Alamat",
+            "Sumber Sampah",
+            "Berat (kg)",
+            "Tertangani (kg)",
+            "Tidak Tertangani (kg)",
+          ]],
+
+          body: [[
+            index + 1,
+            formatDate(record.completed_at),
+            record.nama_penghasil || "-",
+            record.alamat || "-",
+            record.sumber_sampah || "-",
+            Number(record.berat_actual || 0).toFixed(2),
+            handled.toFixed(2),
+            unhandled.toFixed(2),
+          ]],
+
+          theme: "grid",
+
+          styles: {
+            font: "helvetica",
+            fontSize: 8,
+            cellPadding: 2,
+            valign: "middle",
+            lineWidth: 0.1,
+            lineColor: [80, 80, 80],
+            textColor: [0, 0, 0],
+          },
+
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+            lineWidth: 0.1,
+            lineColor: [50, 50, 50],
+          },
+
+          margin: {
+            left: 8,
+            right: 8,
+          },
+        });
+
+        // Detail komposisi entry
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 2,
+
+          head: [[
+            "Jenis Sampah",
+            "Tertangani (kg)",
+            "Tidak Tertangani (kg)",
+            "Total (kg)",
+          ]],
+
+          body: compositions.map((detail) => {
+            const detailHandled = Number(detail.handled_kg || 0);
+            const detailUnhandled = Number(detail.unhandled_kg || 0);
+
+            return [
+              detail.category || "-",
+              detailHandled.toFixed(2),
+              detailUnhandled.toFixed(2),
+              (detailHandled + detailUnhandled).toFixed(2),
+            ];
+          }),
+
+          theme: "grid",
+
+          styles: {
+            font: "helvetica",
+            fontSize: 8,
+            cellPadding: 2,
+            lineWidth: 0.1,
+            lineColor: [80, 80, 80],
+            textColor: [0, 0, 0],
+          },
+
+          headStyles: {
+            fillColor: [245, 245, 245],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
+
+          columnStyles: {
+            1: { halign: "right" },
+            2: { halign: "right" },
+            3: { halign: "right" },
+          },
+
+          margin: {
+            left: 8,
+            right: 85,
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 7;
+      });
+
+      const categoryTotals = {};
+
+      records.forEach((record) => {
+        (record.pickup_compositions || []).forEach((detail) => {
+          if (!categoryTotals[detail.category]) {
+            categoryTotals[detail.category] = {
+              handled: 0,
+              unhandled: 0,
+            };
+          }
+
+          categoryTotals[detail.category].handled += Number(
+            detail.handled_kg || 0
+          );
+
+          categoryTotals[detail.category].unhandled += Number(
+            detail.unhandled_kg || 0
+          );
+        });
+      });
+
+      const categoryBody = Object.entries(categoryTotals).map(
+        ([category, values]) => [
+          category,
+          values.handled.toFixed(2),
+          values.unhandled.toFixed(2),
+          (values.handled + values.unhandled).toFixed(2),
+        ]
+      );
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 8,
+
+        head: [[
+          "Jenis Sampah",
+          "Tertangani (kg)",
+          "Tidak Tertangani (kg)",
+          "Total (kg)",
+        ]],
+
+        body: [
+          ...categoryBody,
+          [
+            "TOTAL",
+            pickupTotals.handled.toFixed(2),
+            pickupTotals.unhandled.toFixed(2),
+            pickupTotals.weight.toFixed(2),
+          ],
+        ],
+
+        theme: "grid",
+
+        styles: {
+          font: "helvetica",
+          fontSize: 8,
+          cellPadding: 2,
+          lineWidth: 0.1,
+          lineColor: [80, 80, 80],
+          textColor: [0, 0, 0],
+        },
+
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0.1,
+          lineColor: [50, 50, 50],
+        },
+
+        columnStyles: {
+          0: { cellWidth: 65 },
+          1: { cellWidth: 35, halign: "right" },
+          2: { cellWidth: 40, halign: "right" },
+          3: { cellWidth: 35, halign: "right" },
+        },
+
+        margin: {
+          left: 8,
+          right: 8,
+        },
+      });
+
+      doc.save(
+        `Laporan_Input_Data_Sampah_${startDate}_${endDate}.pdf`
+      );
+
+      return;
+    }
+
     if (records.length === 0) {
       setError("Tidak ada data pada periode yang dipilih.");
       return;
@@ -702,12 +1044,12 @@ export function AdminLaporan() {
             },
             {
               content: "Sampah Tertangani",
-              colSpan: 9,
+              colSpan: 10,
               styles: { halign: "center" },
             },
             {
               content: "Sampah Tidak Tertangani",
-              colSpan: 9,
+              colSpan: 10,
               styles: { halign: "center" },
             },
           ],
@@ -720,7 +1062,7 @@ export function AdminLaporan() {
             },
             {
               content: "Anorganik",
-              colSpan: 7,
+              colSpan: 8,
               styles: { halign: "center" },
             },
             {
@@ -730,7 +1072,7 @@ export function AdminLaporan() {
             },
             {
               content: "Anorganik",
-              colSpan: 7,
+              colSpan: 8,
               styles: { halign: "center" },
             },
           ],
@@ -745,6 +1087,7 @@ export function AdminLaporan() {
             "Karet",
             "Residu (Styrofoam, bungkus sachetan)",
             "B3",
+            "Lainnya",
 
             "Sisa bahan penyiapan makanan",
             "Sisa makanan",
@@ -755,6 +1098,7 @@ export function AdminLaporan() {
             "Karet",
             "Residu (Styrofoam, bungkus sachetan)",
             "B3",
+            "Lainnya",
           ],
         ],
 
@@ -849,69 +1193,67 @@ export function AdminLaporan() {
                 <option value="bank_sampah">
                   Bank Sampah
                 </option>
+
+                <option value="pickup">
+                  Input Data Sampah
+                </option>
               </select>
             </div>
           </div>
-          <div>
-            <label className="chip ink-soft uppercase block mb-2 font-semibold">
-              {reportType === "pelaku_usaha"
-                ? "Pelaku Usaha"
-                : "Bank Sampah"}
-            </label>
+          {reportType !== "pickup" && (
+            <div>
+              <label className="chip ink-soft uppercase block mb-2 font-semibold">
+                {reportType === "pelaku_usaha"
+                  ? "Pelaku Usaha"
+                  : "Bank Sampah"}
+              </label>
 
-            <div className="flex items-center gap-2 border border-line rounded-xl px-3">
-              <Building2 size={16} className="ink-soft shrink-0" />
+              <div className="flex items-center gap-2 border border-line rounded-xl px-3">
+                <Building2 size={16} className="ink-soft shrink-0" />
 
-              {reportType === "pelaku_usaha" ? (
-                <select
-                  value={selectedBusiness}
-                  onChange={(e) => setSelectedBusiness(e.target.value)}
-                  disabled={loadingBusinesses}
-                  className="w-full py-3 text-sm bg-transparent outline-none"
-                >
-                  <option value="all">
-                    {loadingBusinesses
-                      ? "Memuat..."
-                      : "Semua Pelaku Usaha"}
-                  </option>
-
-                  {businesses.map((business) => (
-                    <option
-                      key={business.id}
-                      value={business.id}
-                    >
-                      {business.nama_usaha} · {business.jenis_usaha}
+                {reportType === "pelaku_usaha" ? (
+                  <select
+                    value={selectedBusiness}
+                    onChange={(e) => setSelectedBusiness(e.target.value)}
+                    disabled={loadingBusinesses}
+                    className="w-full py-3 text-sm bg-transparent outline-none"
+                  >
+                    <option value="all">
+                      {loadingBusinesses
+                        ? "Memuat..."
+                        : "Semua Pelaku Usaha"}
                     </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  value={selectedBankUnit}
-                  onChange={(e) => setSelectedBankUnit(e.target.value)}
-                  disabled={loadingBankUnits}
-                  className="w-full py-3 text-sm bg-transparent outline-none"
-                >
-                  <option value="all">
-                    {loadingBankUnits
-                      ? "Memuat..."
-                      : "Semua Bank Sampah"}
-                  </option>
 
-                  {bankUnits.map((unit) => (
-                    <option
-                      key={unit.id}
-                      value={unit.id}
-                    >
-                      {unit.name}
-                      {unit.kelurahan
-                        ? ` · ${unit.kelurahan}`
-                        : ""}
+                    {businesses.map((business) => (
+                      <option key={business.id} value={business.id}>
+                        {business.nama_usaha} · {business.jenis_usaha}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={selectedBankUnit}
+                    onChange={(e) => setSelectedBankUnit(e.target.value)}
+                    disabled={loadingBankUnits}
+                    className="w-full py-3 text-sm bg-transparent outline-none"
+                  >
+                    <option value="all">
+                      {loadingBankUnits
+                        ? "Memuat..."
+                        : "Semua Bank Sampah"}
                     </option>
-                  ))}
-                </select>
-              )}
+
+                    {bankUnits.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.name}
+                        {unit.kelurahan ? ` · ${unit.kelurahan}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="chip ink-soft uppercase block mb-2 font-semibold">
@@ -1060,6 +1402,203 @@ export function AdminLaporan() {
                         </td>
                       </tr>
                     </tfoot>
+                  </table>
+                </div>
+              </Card>
+            </>
+          ) : reportType === "pickup" ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <p className="chip ink-soft uppercase font-semibold">
+                    Pencatatan
+                  </p>
+                  <p className="font-display text-2xl font-bold mt-2">
+                    {records.length}
+                  </p>
+                  <p className="text-sm ink-soft mt-1">
+                    data pada periode terpilih
+                  </p>
+                </Card>
+
+                <Card>
+                  <p className="chip ink-soft uppercase font-semibold">
+                    Total Sampah
+                  </p>
+                  <p className="font-display text-2xl font-bold mt-2">
+                    {pickupTotals.weight.toFixed(2)} kg
+                  </p>
+                </Card>
+
+                <Card>
+                  <p className="chip ink-soft uppercase font-semibold">
+                    Tertangani
+                  </p>
+                  <p className="font-display text-2xl font-bold text-primary mt-2">
+                    {pickupTotals.handled.toFixed(2)} kg
+                  </p>
+                </Card>
+
+                <Card>
+                  <p className="chip ink-soft uppercase font-semibold">
+                    Tidak Tertangani
+                  </p>
+                  <p className="font-display text-2xl font-bold text-clay mt-2">
+                    {pickupTotals.unhandled.toFixed(2)} kg
+                  </p>
+                </Card>
+              </div>
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm whitespace-nowrap">
+                    <thead>
+                      <tr className="bg-paper">
+                        <th className="text-left px-4 py-3 font-semibold">
+                          Tanggal
+                        </th>
+                        <th className="text-left px-4 py-3 font-semibold">
+                          Penghasil Sampah
+                        </th>
+                        <th className="text-left px-4 py-3 font-semibold">
+                          Sumber Sampah
+                        </th>
+                        <th className="text-right px-4 py-3 font-semibold">
+                          Berat
+                        </th>
+                        <th className="text-right px-4 py-3 font-semibold">
+                          Tertangani
+                        </th>
+                        <th className="text-right px-4 py-3 font-semibold">
+                          Tidak Tertangani
+                        </th>
+                        <th className="text-center px-4 py-3 font-semibold">
+                          Aksi
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {records.map((record) => {
+                        const handled = (record.pickup_compositions || []).reduce(
+                          (sum, detail) => sum + Number(detail.handled_kg || 0),
+                          0
+                        );
+
+                        const unhandled = (record.pickup_compositions || []).reduce(
+                          (sum, detail) => sum + Number(detail.unhandled_kg || 0),
+                          0
+                        );
+
+                        return (
+                          <>
+                            <tr key={record.id} className="border-t border-line">
+                            <td className="px-4 py-3">
+                              {new Date(record.completed_at).toLocaleDateString("id-ID")}
+                            </td>
+
+                            <td className="px-4 py-3 font-medium">
+                              {record.nama_penghasil || "-"}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {record.sumber_sampah || "-"}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono">
+                              {Number(record.berat_actual || 0).toFixed(2)} kg
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono">
+                              {handled.toFixed(2)} kg
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono">
+                              {unhandled.toFixed(2)} kg
+                            </td>
+
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedPickupId(
+                                    expandedPickupId === record.id ? null : record.id
+                                  )
+                                }
+                                className="text-sm font-semibold text-primary hover:underline"
+                              >
+                                {expandedPickupId === record.id ? "Tutup" : "Detail"}
+                              </button>
+                            </td>
+                              </tr>
+
+                              {expandedPickupId === record.id && (
+                                <tr className="border-t border-line bg-paper/50">
+                                  <td colSpan={7} className="px-6 py-4">
+                                    <p className="text-sm font-semibold mb-3">
+                                      Detail Komposisi Sampah
+                                    </p>
+
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr>
+                                            <th className="text-left py-2 pr-4">
+                                              Jenis Sampah
+                                            </th>
+                                            <th className="text-right py-2 px-4">
+                                              Tertangani
+                                            </th>
+                                            <th className="text-right py-2 px-4">
+                                              Tidak Tertangani
+                                            </th>
+                                            <th className="text-right py-2 pl-4">
+                                              Total
+                                            </th>
+                                          </tr>
+                                        </thead>
+
+                                        <tbody>
+                                          {(record.pickup_compositions || [])
+                                            .filter(
+                                              (detail) =>
+                                                Number(detail.handled_kg || 0) > 0 ||
+                                                Number(detail.unhandled_kg || 0) > 0
+                                            )
+                                            .map((detail) => {
+                                              const total =
+                                                Number(detail.handled_kg || 0) +
+                                                Number(detail.unhandled_kg || 0);
+
+                                              return (
+                                                <tr
+                                                  key={detail.id}
+                                                  className="border-t border-line"
+                                                >
+                                                  <td className="py-2 pr-4">
+                                                    {detail.category}
+                                                  </td>
+                                                  <td className="py-2 px-4 text-right font-mono">
+                                                    {Number(detail.handled_kg || 0).toFixed(2)} kg
+                                                  </td>
+                                                  <td className="py-2 px-4 text-right font-mono">
+                                                    {Number(detail.unhandled_kg || 0).toFixed(2)} kg
+                                                  </td>
+                                                  <td className="py-2 pl-4 text-right font-mono font-semibold">
+                                                    {total.toFixed(2)} kg
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                      })}
+                    </tbody>
                   </table>
                 </div>
               </Card>

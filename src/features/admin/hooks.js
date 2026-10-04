@@ -135,7 +135,9 @@ export function useAdminPickupHistory() {
         pickup_compositions (
           id,
           category,
-          percentage
+          percentage,
+          handled_kg,
+          unhandled_kg
         )
       `)
       .order("completed_at", { ascending: false })
