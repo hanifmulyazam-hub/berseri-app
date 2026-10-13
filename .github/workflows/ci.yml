@@ -24,5 +24,8 @@ jobs:
       - name: Run lint
         run: npm run lint
 
+      - name: Intentional failure
+        run: exit 1
+
       - name: Run build
         run: npm run build
